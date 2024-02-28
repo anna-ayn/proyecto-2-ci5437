@@ -119,10 +119,33 @@ public:
         return valid_moves.empty() ? -1 : valid_moves[lrand48() % valid_moves.size()];
     }
 
+    /* Retorna un vector de estados para movimientos validos para una ficha de color dado */
+    std::vector<state_t> get_valid_moves(bool color)
+    {
+        std::vector<state_t> valid_moves;
+        // para cada posicion del tablero
+        for (int pos = 0; pos < DIM; ++pos)
+        {
+            // si es el turno de las negras y la posicion pos es un movimiento valido para las negras
+            // o si es el turno de las blancas y la posicion pos es un movimiento valido para las blancas
+            if ((color && is_black_move(pos)) || (!color && is_white_move(pos)))
+            {
+                // se agrega el estado resultante de mover una ficha en la posicion pos
+                valid_moves.push_back(move(color, pos));
+            }
+        }
+
+        // se retorna el vector de estados resultantes
+        return valid_moves;
+    }
+
+    /* operadores */
+    /* comparar < */
     bool operator<(const state_t &s) const
     {
         return (free_ < s.free_) || ((free_ == s.free_) && (pos_ < s.pos_));
     }
+    /* comparar == */
     bool operator==(const state_t &state) const
     {
         return (state.t_ == t_) && (state.free_ == free_) && (state.pos_ == pos_);
