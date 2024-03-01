@@ -72,7 +72,71 @@ int negamax(state_t state, int depth, int color, bool use_tt = false)
     return score;
 }
 
-int negamax(state_t state, int depth, int alpha, int beta, int color, bool use_tt = false);
+int minimax(state_t state, int depth, int alpha, int beta, int color){
+    int score;
+    // Si la profundidad es 0 o es un estado terminal, retornamos el valor del estado
+    if (depth == 0 || state.terminal())
+        return state.value();
+    
+    // Si el estado es de max, entonces
+    if (color == 1){
+        std::vector<state_t> valid_states = state.get_valid_moves(true);
+        // Iteramos en cada estado valido
+        for (auto st : valid_states){
+            generated++;
+            // Actualizamos el score con el maximo entre el score y el valor de minimax recursivo
+            score = max(score, minimax(st, depth - 1, alpha, beta, -color));
+            // Actualizamos el valor de alpha
+            alpha = max(alpha, score);
+            // Si beta es menor o igual a alpha, podamos
+            if (beta <= alpha) // Poda alfa
+                break;
+        }
+        expanded++;
+        return alpha;
+    }
+    // Si el estado es de min, entonces
+    else {
+        std::vector<state_t> valid_states = state.get_valid_moves(false);
+        // Iteramos en cada estado valido
+        for (auto st : valid_states){
+            generated++;
+            // Actualizamos el score con el minimo entre el score y el valor de minimax recursivo
+            score = min(score, minimax(st, depth - 1, alpha, beta, -color));
+            // Actualizamos el valor de beta
+            beta = min(beta, score);
+            // Si beta es menor o igual a alpha, podamos
+            if (beta <= alpha) // Poda beta
+                break;
+        }
+        expanded++;
+        return beta;
+    }
+
+}
+int negamax(state_t state, int depth, int alpha, int beta, int color, bool use_tt = false){
+    // Si la profundidad es 0 o es un estado terminal, retornamos el valor del estado
+    if (depth == 0 || state.terminal())
+        return color * state.value();
+    // Si no, el score lo inicializamos en -infinito
+    int score = std::numeric_limits<int>::min();
+    // Iteramos en cada estado valido
+    std::vector<state_t> valid_states = state.get_valid_moves(color == 1);
+    for (auto st : valid_states){
+        generated++;
+        // Llamamos recursivamente a negamax
+        int val = -negamax(st, depth - 1, -beta, -alpha, -color);
+        // Actualizamos el score con el maximo entre el score y el valor de negamax recursivo
+        score = max(score, val);
+        // Actualizamos el valor de alpha
+        alpha = max(alpha, val);
+        // Si beta es menor o igual a alpha, podamos
+        if (alpha >= beta)
+            break;
+    }
+    expanded++;
+    return score;
+}
 int scout(state_t state, int depth, int color, bool use_tt = false);
 int negascout(state_t state, int depth, int alpha, int beta, int color, bool use_tt = false);
 
