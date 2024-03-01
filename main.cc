@@ -13,6 +13,8 @@
 
 using namespace std;
 
+enum Condicion {MAYOR_IGUAL, MAYOR};
+
 unsigned expanded = 0;
 unsigned generated = 0;
 int tt_threshold = 32; // threshold to save entries in TT
@@ -72,9 +74,145 @@ int negamax(state_t state, int depth, int color, bool use_tt = false)
     return score;
 }
 
-int negamax(state_t state, int depth, int alpha, int beta, int color, bool use_tt = false);
-int scout(state_t state, int depth, int color, bool use_tt = false);
-int negascout(state_t state, int depth, int alpha, int beta, int color, bool use_tt = false);
+
+int negamax(state_t state, int depth, int alpha, int beta, int color, bool use_tt = false) {
+    // condicion base = profundidad alcanzada o estado terminal
+    if (depth == 0 || state.terminal())
+        return color * state.value(); // Valor del estado terminal multiplicado por el color
+
+    int score = std::numeric_limits<int>::min(); // se inicializa el puntaje con el valor minimo de int
+    std::vector<state_t> moves = state.get_valid_moves(color == 1); // obtener movimientos validos
+
+    // iterar sobre los movimientos
+    for (const auto& nextState : moves) {
+        generated++; // se incrementar contador de estados generados
+
+        // calcular el valor del siguiente estado recursivamente y actualiza el puntaje maximo
+        int val = -negamax(nextState, depth - 1, -beta, -alpha, -color);
+        score = std::max(score, val);
+        alpha = std::max(alpha, val);
+
+        // realizar la poda beta
+        if (alpha >= beta)
+            break;
+    }
+
+    expanded++;
+    return score;
+}
+
+
+bool TEST(state_t state, int depth, int color, int score, Condicion cond) {
+    // condicion base = profundidad alcanzada o estado terminal
+    if (depth == 0 || state.terminal()) 
+        return state.value() > score;
+
+    // determinar si es una maximizacion o minimizacion
+    bool isMax = color == 1;
+
+    // obtener movimientos validos
+    std::vector<state_t> moves = state.get_valid_moves(isMax);
+
+    // iterar sobre los movimientos
+    for (const auto& nextState : moves) {
+        generated++;
+
+        // realizar la prueba recursiva segun la condicion
+        bool testResult;
+        if (isMax && cond == Condicion::MAYOR)
+            testResult = TEST(nextState, depth - 1, -color, score, Condicion::MAYOR);
+        else if (!isMax && cond == Condicion::MAYOR)
+            testResult = !TEST(nextState, depth - 1, -color, score, Condicion::MAYOR);
+        else // cond == Condicion::MAYOR_IGUAL
+            testResult = TEST(nextState, depth - 1, -color, score, Condicion::MAYOR) || state.value() >= score;
+
+        // si se cumple la condicion, devolver el resultado
+        if (testResult == (cond == Condicion::MAYOR))
+            return true;
+    }
+
+    expanded++;
+    return !isMax;
+}
+
+
+int scout(state_t state, int depth, int color, bool use_tt = false) {
+    // condicion base = profundidad alcanzada o estado terminal
+    if (depth == 0 || state.terminal()) {
+        return state.value(); // valor del estado terminal
+    }
+    
+    bool isMax = color == 1; // determinar si es una maximizacion o minimizacion
+    int score = 0;
+
+    // obtener movimientos validos
+    std::vector<state_t> moves = state.get_valid_moves(isMax);
+
+    // iterar sobre los movimientos
+    for (auto& nextState : moves) {
+        generated++; // incrementar contador de estados generados
+
+        // si es el primer movimiento realiza una busqueda scout
+        if (score == 0) {
+            score = scout(nextState, depth - 1, -color); 
+            continue;
+        }
+
+        // evalua el siguiente movimiento
+        bool testResult = isMax ? TEST(nextState, depth, -color, score, Condicion::MAYOR)
+                                : !TEST(nextState, depth, -color, score, Condicion::MAYOR_IGUAL);
+
+        // si el movimiento cumple la condicion de corte realiza una busqueda scout
+        if (testResult == (isMax && testResult)) { 
+            score = scout(nextState, depth - 1, -color);
+        }
+    }
+
+    expanded++;
+    return score;
+}
+
+
+int negascout(state_t state, int depth, int alpha, int beta, int color, bool use_tt = false) {
+    // condicion base = profundidad alcanzada o estado terminal
+    if (depth == 0 || state.terminal()) 
+        return color * state.value();
+
+    int score = 0;
+    bool first = true;
+
+    // obtener movimientos validos
+    std::vector<state_t> moves = state.get_valid_moves(color == 1);
+
+    // iterar sobre los movimientos
+    for (auto& nextState : moves) {
+        generated++;
+
+        if (first) {
+            // realiza la primera busqueda recursiva con alpha y beta invertidos
+            score = -negascout(nextState, depth - 1, -beta, -alpha, -color);
+            first = false;
+        } else {
+            // realiza una busqueda scout con ventana estrecha
+            score = -negascout(nextState, depth - 1, -alpha - 1, -alpha, -color);
+            // si la busqueda scout no fue exitosa se realiza una nueva busqueda con ventana completa
+            if (alpha < score && score < beta) {
+                score = -negascout(nextState, depth - 1, -beta, -score, -color);
+            }
+        }
+
+        // actualiza el valor de alpha
+        alpha = std::max(alpha, score);
+
+        // realizar la poda beta
+        if (alpha >= beta) 
+            break;
+    }
+
+    expanded++;
+    return alpha;
+}
+
 
 int main(int argc, const char **argv)
 {
@@ -103,8 +241,11 @@ int main(int argc, const char **argv)
 
 #if 0
     // print principal variation
-    for( int i = 0; i <= npv; ++i )
-        cout << pv[npv - i];
+    for( int i = 0; i <= npv; ++i ){
+      cout << pv[npv - i] << endl;
+      pv[npv - i].print_bits(cout);
+      cout << endl;
+    }  
 #endif
 
     // Print name of algorithm
@@ -136,19 +277,19 @@ int main(int argc, const char **argv)
         {
             if (algorithm == 1)
             {
-                // value = negamax(pv[i], 0, color, use_tt);
+                value = negamax(pv[i], 20, color, use_tt);
             }
             else if (algorithm == 2)
             {
-                // value = negamax(pv[i], 0, -200, 200, color, use_tt);
+                value = negamax(pv[i], 20, -200, 200, color, use_tt);
             }
             else if (algorithm == 3)
             {
-                // value = scout(pv[i], 0, color, use_tt);
+                value = scout(pv[i], 20, color, use_tt);
             }
             else if (algorithm == 4)
             {
-                // value = negascout(pv[i], 0, -200, 200, color, use_tt);
+                value = negascout(pv[i], 20, -200, 200, color, use_tt);
             }
         }
         catch (const bad_alloc &e)
