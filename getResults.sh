@@ -7,6 +7,18 @@
 # Para cada nivel, se obtiene el resultado de los movimientos de las piezas blancas y negras. Y se muestran por consola en el formato:
 # <Nivel i>\t <Valor>\t <Nodos expandidos>\t <Nodos generados>\t <Tiempo de ejecución>\t <Generados*segundo>
 
+# Se verifica que se haya pasado un argumento
+if [ "$#" -ne 1 ]; then
+    echo "Uso: ./getResults.sh <archivo de resultados>"
+    exit 1
+fi
+
+# Se verifica que el archivo de resultados exista
+if [ ! -f $1 ]; then
+    echo "El archivo de resultados no existe"
+    exit 1
+fi
+
 # Se crea un archivo temporal para guardar los resultados
 TEMP="temp.txt"
 
