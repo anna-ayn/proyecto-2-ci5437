@@ -34,9 +34,9 @@ do
     # Se obtienen los nodos generados
     generated=`echo $line | awk '{print $6}' | tr -d ',' | tr -d '#generated='`
     # Se obtiene el tiempo de ejecución
-    timeL=`echo $line | awk '{print $7}' | tr -d ',' | tr -d 'seconds='`
-    # Se obtiene la cantidad de nodos generados por segundo (Puede ser -Inf, nan o un número real)
-    generatedPerSecond=`echo $line | cut -d'=' -f6`
+    timeL=`echo $line | awk '{print $7}' | tr -d ',' | tr -d 'seconds=' | tr '.' ','`
+    # Se obtiene la cantidad de nodos generados por segundo (Puede ser -Inf, nan o un número real). Tambien remplaza el . por ,
+    generatedPerSecond=`echo $line | cut -d'=' -f6 | tr '.' ','` 
     # Se imprime el resultado en forma de tabla
     echo -e "$level\t $value\t $expanded\t $generated\t $timeL\t $generatedPerSecond"
 done < $TEMP
